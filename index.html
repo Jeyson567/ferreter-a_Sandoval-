@@ -1,306 +1,224 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Inventario Tienda Pinogrande</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f4f6fb; margin: 0; padding: 0; }
-        .container { max-width: 700px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
-        h1 { text-align: center; color: #2c3e50; }
-        form { margin-bottom: 24px; }
-        label { display: block; margin-bottom: 6px; color: #34495e; }
-        input, select { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #ccc; }
-        button { background: #2980b9; color: #fff; border: none; padding: 10px 18px; border-radius: 4px; cursor: pointer; margin-right: 8px; }
-        button:hover { background: #3498db; }
-        .alert { background: #e74c3c; color: #fff; padding: 8px; border-radius: 4px; margin-bottom: 16px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background: #2980b9; color: #fff; }
-        .low-stock { background: #f9e6e6; color: #c0392b; }
-    </style>
+<meta charset="UTF-8">
+<title>POS - Ferretería Sandoval</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
+  margin: 0;
+  padding: 10px;
+}
+h1 {
+  text-align: center;
+}
+section {
+  background: #fff;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+input, button {
+  padding: 6px;
+  margin: 4px 0;
+  width: 100%;
+}
+button {
+  cursor: pointer;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+th, td {
+  border-bottom: 1px solid #ccc;
+  padding: 4px;
+}
+.total {
+  font-size: 18px;
+  font-weight: bold;
+  text-align: right;
+}
+
+/* ==== IMPRESIÓN TICKET 80mm ==== */
+@media print {
+  body {
+    width: 80mm;
+    margin: 0;
+    background: #fff;
+  }
+  .no-print {
+    display: none;
+  }
+  table {
+    font-size: 12px;
+  }
+}
+</style>
 </head>
+
 <body>
-    <div id="loginContainer" class="container" style="max-width:350px;display:block;">
-        <h1>Acceso Tienda Pinogrande</h1>
-        <form id="loginForm">
-            <label>Contraseña</label>
-            <input type="password" id="passwordInput" required autofocus>
-            <button type="submit">Entrar</button>
-            <div id="loginError" style="color:#e74c3c;margin-top:8px;"></div>
-        </form>
-    </div>
-    <div class="container" id="mainApp" style="display:none;">
-            <h1>Sistema de Inventario Tienda Pinogrande</h1>
-            <div id="lowStockAlert"></div>
-            <form id="addForm">
-                <h2>Ingreso de Producto</h2>
-                <label>Nombre del producto</label>
-                <input type="text" id="addName" required>
-                <label>Cantidad</label>
-                <input type="number" id="addQty" min="1" required>
-                <button type="submit">Ingresar</button>
-            </form>
-            <form id="sellForm">
-                <h2>Venta de Producto</h2>
-                <label>Producto</label>
-                <select id="sellName"></select>
-                <label>Cantidad a vender</label>
-                <input type="number" id="sellQty" min="1" required>
-                <button type="submit">Vender</button>
-            </form>
-            <div id="successMsg" style="color:#27ae60;margin-bottom:10px;"></div>
-            <h2>Informe de Inventario</h2>
-            <table id="inventoryTable">
-                <thead>
-                    <tr><th>Producto</th><th>Cantidad</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-            <button id="clearAll" style="background:#e74c3c;margin-top:18px;">Borrar todo</button>
-            <button id="pdfVentas" style="background:#27ae60;margin-top:18px;">Descargar informe de ventas de la semana (PDF)</button>
-            <button id="cuadrarSemana" style="background:#8e44ad;margin-top:18px;">Cuadrar semana</button>
-    </div>
-    <script>
-let inventario = [];
-let ventas = [];
-const lowStockLimit = 5;
-const PASSWORD = "1234";
 
-// Cargar inventario y ventas desde localStorage (Tienda Pinogrande)
-function cargarDatos() {
-    try {
-        inventario = JSON.parse(localStorage.getItem('inventario_pinogrande')) || [];
-    } catch(e) { inventario = []; }
-    // Normaliza nombres antiguos a minúsculas y elimina duplicados
-    const nombres = new Set();
-    inventario = inventario.filter(item => {
-        if (!item.nombre) return false;
-        item.nombre = item.nombre.toLowerCase().trim();
-        if (nombres.has(item.nombre)) return false;
-        nombres.add(item.nombre);
-        return true;
-    });
-    try {
-        ventas = JSON.parse(localStorage.getItem('ventas_pinogrande')) || [];
-    } catch(e) { ventas = []; }
+<h1>FERRETERÍA SANDOVAL</h1>
+
+<section class="no-print">
+<h3>📦 Registrar / Editar Producto</h3>
+<input id="codigo" placeholder="Código de barras">
+<input id="nombre" placeholder="Nombre del producto">
+<input id="categoria" placeholder="Categoría">
+<input id="existencia" type="number" step="0.01" placeholder="Existencia">
+<input id="precio" type="number" step="0.01" placeholder="Precio normal (Q)">
+<input id="precioMin" type="number" step="0.01" placeholder="Precio mínimo permitido (Q)">
+<button onclick="guardarProducto()">Guardar producto</button>
+</section>
+
+<section class="no-print">
+<h3>🛒 Punto de Venta</h3>
+<input id="scan" placeholder="Escanear código de barras" autofocus>
+<table id="tablaVenta">
+<thead>
+<tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Total</th></tr>
+</thead>
+<tbody></tbody>
+</table>
+<div class="total" id="totalVenta">Total: Q0.00</div>
+<button onclick="finalizarVenta()">Finalizar venta e imprimir</button>
+</section>
+
+<section class="no-print">
+<h3>📊 Cierre del Día</h3>
+<button onclick="cierreDelDia()">Hacer cierre y enviar WhatsApp</button>
+</section>
+
+<script>
+const telefonoJefe = "50231064872";
+
+let inventario = JSON.parse(localStorage.getItem("inventario_sandoval")) || {};
+let ventasDia = JSON.parse(localStorage.getItem("ventas_dia")) || [];
+let ticketNum = Number(localStorage.getItem("ticket_num")) || 1;
+let carrito = [];
+
+function guardarProducto() {
+  const c = codigo.value.trim();
+  if (!c) return alert("Código requerido");
+  inventario[c] = {
+    nombre: nombre.value,
+    categoria: categoria.value,
+    existencia: Number(existencia.value),
+    precio: Number(precio.value),
+    precioMin: Number(precioMin.value)
+  };
+  localStorage.setItem("inventario_sandoval", JSON.stringify(inventario));
+  alert("Producto guardado");
 }
 
-function guardarInventario() {
-    localStorage.setItem('inventario_pinogrande', JSON.stringify(inventario));
-}
-function guardarVentas() {
-    localStorage.setItem('ventas_pinogrande', JSON.stringify(ventas));
+scan.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    agregarVenta(scan.value.trim());
+    scan.value = "";
+  }
+});
+
+function agregarVenta(codigo) {
+  const p = inventario[codigo];
+  if (!p) return alert("Producto no registrado");
+
+  let precioCobro = prompt(
+    `Precio normal: Q${p.precio}\nPrecio mínimo: Q${p.precioMin}\n\nIngrese precio a cobrar:`,
+    p.precio
+  );
+  precioCobro = Number(precioCobro);
+  if (precioCobro < p.precioMin) {
+    return alert("No se permite cobrar menos del precio mínimo");
+  }
+  if (p.existencia <= 0) return alert("Sin existencia");
+
+  p.existencia -= 1;
+  carrito.push({
+    nombre: p.nombre,
+    cant: 1,
+    precio: precioCobro,
+    total: precioCobro
+  });
+  actualizarTabla();
+  localStorage.setItem("inventario_sandoval", JSON.stringify(inventario));
 }
 
 function actualizarTabla() {
-    const tbody = document.querySelector('#inventoryTable tbody');
-    tbody.innerHTML = '';
-    inventario.forEach(item => {
-        const tr = document.createElement('tr');
-        if (item.cantidad <= lowStockLimit) tr.classList.add('low-stock');
-        tr.innerHTML = `<td>${item.nombre.charAt(0).toUpperCase() + item.nombre.slice(1)}</td><td>${item.cantidad}</td>`;
-        tbody.appendChild(tr);
-    });
-    guardarInventario();
+  const tb = document.querySelector("#tablaVenta tbody");
+  tb.innerHTML = "";
+  let total = 0;
+  carrito.forEach(i => {
+    total += i.total;
+    tb.innerHTML += `<tr>
+      <td>${i.nombre}</td>
+      <td>${i.cant}</td>
+      <td>Q${i.precio.toFixed(2)}</td>
+      <td>Q${i.total.toFixed(2)}</td>
+    </tr>`;
+  });
+  totalVenta.textContent = "Total: Q" + total.toFixed(2);
 }
 
-document.getElementById('addForm').onsubmit = function(e) {
-    e.preventDefault();
-    let nombre = document.getElementById('addName').value.trim();
-    const cantidad = parseInt(document.getElementById('addQty').value);
-    if (!nombre || nombre.replace(/\s/g, '') === '' || isNaN(cantidad) || cantidad < 1) {
-        mostrarMensaje('Nombre o cantidad inválida.', true);
-        return;
-    }
-    nombre = nombre.toLowerCase(); // Normaliza nombre
-    let prod = inventario.find(i => i.nombre === nombre);
-    if (prod) {
-        prod.cantidad += cantidad;
-    } else {
-        inventario.push({ nombre, cantidad });
-    }
-    actualizarTabla();
-    actualizarSelect();
-    mostrarAlertaStockBajo();
-    mostrarMensaje('Producto ingresado correctamente.');
-    this.reset();
-};
+function finalizarVenta() {
+  if (carrito.length === 0) return alert("No hay venta");
+  const venta = {
+    ticket: ticketNum,
+    fecha: new Date().toLocaleString(),
+    items: carrito,
+    total: carrito.reduce((s,i)=>s+i.total,0)
+  };
+  ventasDia.push(venta);
+  localStorage.setItem("ventas_dia", JSON.stringify(ventasDia));
+  localStorage.setItem("ticket_num", ++ticketNum);
 
-document.getElementById('sellForm').onsubmit = function(e) {
-    e.preventDefault();
-    let nombre = document.getElementById('sellName').value;
-    const cantidad = parseInt(document.getElementById('sellQty').value);
-    if (!nombre || isNaN(cantidad) || cantidad < 1) {
-        mostrarMensaje('Datos de venta inválidos.', true);
-        return;
-    }
-    nombre = nombre.toLowerCase(); // Normaliza nombre
-    let prod = inventario.find(i => i.nombre === nombre);
-    if (!prod || cantidad > prod.cantidad) {
-        mostrarMensaje('Cantidad inválida o producto sin stock suficiente.', true);
-        return;
-    }
-    prod.cantidad -= cantidad;
-    ventas.push({
-        nombre,
-        cantidad,
-        fecha: new Date().toISOString()
-    });
-    try {
-        guardarInventario();
-        guardarVentas();
-    } catch (err) {
-        mostrarMensaje('Error guardando la venta. Intenta de nuevo.', true);
-    }
-    actualizarTabla();
-    actualizarSelect();
-    mostrarAlertaStockBajo();
-    mostrarMensaje('Venta registrada correctamente.');
-    this.reset();
-};
-
-document.getElementById('clearAll').onclick = function() {
-    if (confirm('¿Seguro que quieres borrar todo el inventario?')) {
-        inventario = [];
-        ventas = [];
-        guardarInventario();
-        guardarVentas();
-        actualizarTabla();
-        actualizarSelect();
-        mostrarAlertaStockBajo();
-    }
-};
-
-function actualizarSelect() {
-    const select = document.getElementById('sellName');
-    select.innerHTML = '';
-    if (inventario.length === 0) {
-        select.disabled = true;
-        document.getElementById('sellQty').disabled = true;
-        return;
-    }
-    select.disabled = false;
-    document.getElementById('sellQty').disabled = false;
-    inventario.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.nombre;
-        option.textContent = item.nombre.charAt(0).toUpperCase() + item.nombre.slice(1);
-        select.appendChild(option);
-    });
-}
-function mostrarMensaje(msg, error = false) {
-    const div = document.getElementById('successMsg');
-    div.textContent = msg;
-    div.style.color = error ? '#e74c3c' : '#27ae60';
-    setTimeout(() => { div.textContent = ''; }, 2000);
+  imprimirTicket(venta);
+  carrito = [];
+  actualizarTabla();
 }
 
-function mostrarAlertaStockBajo() {
-    const alertDiv = document.getElementById('lowStockAlert');
-    const bajos = inventario.filter(item => item.cantidad <= lowStockLimit);
-    if (bajos.length > 0) {
-        alertDiv.innerHTML = `<div class='alert'>¡Stock bajo en: ${bajos.map(i => i.nombre).join(', ')}!</div>`;
-    } else {
-        alertDiv.innerHTML = '';
-    }
+function imprimirTicket(v) {
+  document.body.innerHTML = `
+  <h3 style="text-align:center">FERRETERÍA SANDOVAL</h3>
+  Ticket #${v.ticket}<br>
+  ${v.fecha}<br><hr>
+  ${v.items.map(i=>`${i.nombre}<br>${i.cant} x Q${i.precio} = Q${i.total}`).join("<br>")}
+  <hr>
+  TOTAL: Q${v.total.toFixed(2)}<br><br>
+  Gracias por su compra
+  `;
+  window.print();
+  location.reload();
 }
 
-
-document.getElementById('pdfVentas').onclick = function() {
-    generarPDFVentasSemana();
-};
-
-
-function generarPDFVentasSemana() {
-    // Calcular el lunes de la semana actual
-    const hoy = new Date();
-    const diaSemana = hoy.getDay(); // 0=domingo, 1=lunes...
-    const lunes = new Date(hoy);
-    lunes.setDate(hoy.getDate() - ((diaSemana + 6) % 7));
-    lunes.setHours(0,0,0,0);
-    const domingo = new Date(lunes);
-    domingo.setDate(lunes.getDate() + 6);
-    domingo.setHours(23,59,59,999);
-
-    // Filtrar ventas de la semana
-    const ventasSemana = ventas.filter(v => {
-        if (!v.fecha) return false;
-        const fechaVenta = new Date(v.fecha);
-        return fechaVenta >= lunes && fechaVenta <= domingo;
+function cierreDelDia() {
+  if (ventasDia.length === 0) return alert("No hay ventas");
+  let texto = `📊 CIERRE DIARIO – FERRETERÍA SANDOVAL\n`;
+  texto += `Fecha: ${new Date().toLocaleDateString()}\n\n`;
+  let total = 0;
+  ventasDia.forEach(v => total += v.total);
+  texto += `Tickets: ${ventasDia.length}\n`;
+  texto += `TOTAL VENDIDO: Q${total.toFixed(2)}\n\n`;
+  texto += `Detalle:\n`;
+  ventasDia.forEach(v => {
+    v.items.forEach(i=>{
+      texto += `- ${i.nombre}: Q${i.total}\n`;
     });
-    if (ventasSemana.length === 0) {
-        alert('No hay ventas registradas esta semana.');
-        return;
-    }
-    // Resumen por producto
-    const resumen = {};
-    ventasSemana.forEach(v => {
-        if (!resumen[v.nombre]) resumen[v.nombre] = 0;
-        resumen[v.nombre] += v.cantidad;
-    });
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    const semanaStr = `${lunes.toLocaleDateString()} - ${domingo.toLocaleDateString()}`;
-    doc.text('Informe de ventas semanal Tienda Pinogrande', 10, 15);
-    doc.setFontSize(12);
-    doc.text('Semana: ' + semanaStr, 10, 23);
-    let y = 35;
-    doc.text('Producto', 10, y);
-    doc.text('Cantidad', 80, y);
-    doc.text('Fecha', 130, y);
-    y += 8;
-    ventasSemana.forEach(v => {
-        doc.text(v.nombre.charAt(0).toUpperCase() + v.nombre.slice(1), 10, y);
-        doc.text(String(v.cantidad), 80, y);
-        doc.text(new Date(v.fecha).toLocaleDateString() + ' ' + new Date(v.fecha).toLocaleTimeString(), 130, y);
-        y += 8;
-        if (y > 270) { doc.addPage(); y = 20; }
-    });
-    y += 8;
-    doc.setFontSize(13);
-    doc.text('Resumen total por producto:', 10, y);
-    y += 8;
-    Object.entries(resumen).forEach(([nombre, total]) => {
-        doc.text(`${nombre.charAt(0).toUpperCase() + nombre.slice(1)}: ${total}`, 15, y);
-        y += 7;
-        if (y > 280) { doc.addPage(); y = 20; }
-    });
-    const fileName = `ventas_tienda_pinogrande_semana_${lunes.toISOString().slice(0,10)}.pdf`;
-    doc.save(fileName);
+  });
+
+  window.open(
+    `https://wa.me/${telefonoJefe}?text=${encodeURIComponent(texto)}`,
+    "_blank"
+  );
+
+  ventasDia = [];
+  localStorage.setItem("ventas_dia", JSON.stringify([]));
+  alert("Cierre realizado, ventas reiniciadas");
 }
+</script>
 
-
-
-// Login simple
-document.getElementById('loginForm').onsubmit = function(e) {
-    e.preventDefault();
-    const pass = document.getElementById('passwordInput').value;
-    if (pass === PASSWORD) {
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        iniciarApp();
-    } else {
-        document.getElementById('loginError').textContent = 'Contraseña incorrecta.';
-    }
-};
-
-function iniciarApp() {
-    cargarDatos();
-    actualizarTabla();
-    actualizarSelect();
-    mostrarAlertaStockBajo();
-    document.getElementById('cuadrarSemana').onclick = cuadrarSemana;
-}
-
-function cuadrarSemana() {
-    generarPDFVentasSemana();
-    ventas = [];
-    guardarVentas();
-    mostrarMensaje('Semana cuadrada y ventas reiniciadas.');
-}
-    </script>
 </body>
 </html>
