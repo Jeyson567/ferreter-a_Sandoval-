@@ -2,42 +2,60 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Prueba POS</title>
+<title>POS – Paso 1</title>
 </head>
 
 <body>
 
-<h2>PRUEBA POS – FERRETERÍA</h2>
+<h2>POS – FERRETERÍA (Paso 1)</h2>
 
 <h3>Registrar producto</h3>
 <input id="codigo" placeholder="Código de barras">
-<input id="nombre" placeholder="Nombre">
-<button onclick="guardar()">Guardar</button>
+<input id="nombre" placeholder="Nombre del producto">
+<input id="precio" type="number" placeholder="Precio normal (Q)">
+<input id="precioMin" type="number" placeholder="Precio mínimo permitido (Q)">
+<button onclick="guardar()">Guardar producto</button>
+
+<hr>
 
 <h3>Vender</h3>
-<input id="scan" placeholder="Escanear para vender">
+<input id="scan" placeholder="Escanear / escribir código y ENTER">
 
 <script>
 let inventario = JSON.parse(localStorage.getItem("inv")) || {};
 
 function guardar() {
-  const c = document.getElementById("codigo").value.trim();
-  const n = document.getElementById("nombre").value.trim();
+  const c = codigo.value.trim();
+  const n = nombre.value.trim();
+  const p = Number(precio.value);
+  const pmin = Number(precioMin.value);
 
-  if (!c || !n) {
-    alert("Faltan datos");
+  if (!c || !n || !p || !pmin) {
+    alert("Complete todos los campos");
     return;
   }
 
-  inventario[c] = { nombre: n };
-  localStorage.setItem("inv", JSON.stringify(inventario));
+  if (pmin > p) {
+    alert("El precio mínimo no puede ser mayor al precio normal");
+    return;
+  }
 
-  alert("Producto guardado");
+  inventario[c] = {
+    nombre: n,
+    precio: p,
+    precioMin: pmin
+  };
+
+  localStorage.setItem("inv", JSON.stringify(inventario));
+  alert("✅ Producto guardado");
+
   codigo.value = "";
   nombre.value = "";
+  precio.value = "";
+  precioMin.value = "";
 }
 
-document.getElementById("scan").addEventListener("keydown", function(e){
+scan.addEventListener("keydown", function(e){
   if (e.key === "Enter") {
     vender(this.value.trim());
     this.value = "";
@@ -45,17 +63,32 @@ document.getElementById("scan").addEventListener("keydown", function(e){
 });
 
 function vender(c) {
-  if (!inventario[c]) {
-    alert("Producto NO encontrado");
+  const p = inventario[c];
+  if (!p) {
+    alert("Producto no registrado");
     return;
   }
 
-  let precio = prompt(
-    "Producto: " + inventario[c].nombre + 
-    "\nIngrese precio de venta:"
+  let precioVenta = prompt(
+    "Producto: " + p.nombre +
+    "\nPrecio normal: Q" + p.precio +
+    "\nPrecio mínimo permitido: Q" + p.precioMin +
+    "\n\nIngrese precio de venta:",
+    p.precio
   );
 
-  alert("Se venderá en Q" + precio);
+  precioVenta = Number(precioVenta);
+
+  if (precioVenta < p.precioMin) {
+    alert("❌ No se permite vender debajo del precio mínimo");
+    return;
+  }
+
+  alert(
+    "✅ Venta correcta\n" +
+    "Producto: " + p.nombre +
+    "\nPrecio final: Q" + precioVenta
+  );
 }
 </script>
 
