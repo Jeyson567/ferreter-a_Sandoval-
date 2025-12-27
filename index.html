@@ -2,180 +2,62 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>POS – Ferretería Sandoval</title>
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background:#f2f2f2;
-  margin:0;
-  padding:10px;
-}
-h1 { text-align:center; }
-section {
-  background:#fff;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:6px;
-}
-input, button {
-  width:100%;
-  padding:6px;
-  margin:4px 0;
-}
-button { cursor:pointer; }
-table {
-  width:100%;
-  border-collapse:collapse;
-  font-size:14px;
-}
-th, td {
-  border-bottom:1px solid #ccc;
-  padding:4px;
-}
-.total {
-  text-align:right;
-  font-size:18px;
-  font-weight:bold;
-}
-
-/* === IMPRESIÓN TICKET 80mm === */
-@media print {
-  body {
-    width:80mm;
-    margin:0;
-    background:#fff;
-    font-size:12px;
-  }
-  .no-print { display:none; }
-}
-</style>
+<title>Prueba POS</title>
 </head>
 
 <body>
 
-<h1>FERRETERÍA SANDOVAL</h1>
+<h2>PRUEBA POS – FERRETERÍA</h2>
 
-<!-- REGISTRO DE PRODUCTOS -->
-<section class="no-print">
-<h3>📦 Registro de Producto</h3>
-<input id="codigo" placeholder="Código de barras (escanea aquí)">
-<input id="nombre" placeholder="Nombre del producto">
-<input id="categoria" placeholder="Categoría">
-<input id="existencia" type="number" step="0.01" placeholder="Existencia">
-<input id="precio" type="number" step="0.01" placeholder="Precio normal Q">
-<input id="precioMin" type="number" step="0.01" placeholder="Precio mínimo permitido Q">
-<button onclick="guardarProducto()">Guardar producto</button>
-</section>
+<h3>Registrar producto</h3>
+<input id="codigo" placeholder="Código de barras">
+<input id="nombre" placeholder="Nombre">
+<button onclick="guardar()">Guardar</button>
 
-<!-- PUNTO DE VENTA -->
-<section class="no-print">
-<h3>🛒 Punto de Venta</h3>
-<input id="scan" placeholder="Escanear producto para vender" autofocus>
-<table>
-<thead>
-<tr><th>Producto</th><th>Cant</th><th>Precio</th><th>Total</th></tr>
-</thead>
-<tbody id="tablaVenta"></tbody>
-</table>
-<div class="total" id="totalVenta">Total: Q0.00</div>
-<button onclick="finalizarVenta()">Finalizar venta e imprimir</button>
-</section>
-
-<!-- CIERRE -->
-<section class="no-print">
-<h3>📊 Cierre del Día</h3>
-<button onclick="cierreDelDia()">Hacer cierre y enviar WhatsApp</button>
-</section>
+<h3>Vender</h3>
+<input id="scan" placeholder="Escanear para vender">
 
 <script>
-const telefonoJefe = "50231064872";
+let inventario = JSON.parse(localStorage.getItem("inv")) || {};
 
-let inventario = JSON.parse(localStorage.getItem("inventario_sandoval")) || {};
-let ventasDia = JSON.parse(localStorage.getItem("ventas_dia")) || [];
-let ticketNum = Number(localStorage.getItem("ticket_num")) || 1;
-let carrito = [];
-
-/* ===== GUARDAR PRODUCTO (ARREGLADO) ===== */
-function guardarProducto() {
-  const c = codigo.value.trim();
-  const n = nombre.value.trim();
+function guardar() {
+  const c = document.getElementById("codigo").value.trim();
+  const n = document.getElementById("nombre").value.trim();
 
   if (!c || !n) {
-    alert("Código y nombre son obligatorios");
+    alert("Faltan datos");
     return;
   }
 
-  inventario[c] = {
-    nombre: n,
-    categoria: categoria.value.trim(),
-    existencia: Number(existencia.value) || 0,
-    precio: Number(precio.value) || 0,
-    precioMin: Number(precioMin.value) || 0
-  };
+  inventario[c] = { nombre: n };
+  localStorage.setItem("inv", JSON.stringify(inventario));
 
-  localStorage.setItem("inventario_sandoval", JSON.stringify(inventario));
-  alert("✅ Producto guardado correctamente");
-
+  alert("Producto guardado");
   codigo.value = "";
   nombre.value = "";
-  categoria.value = "";
-  existencia.value = "";
-  precio.value = "";
-  precioMin.value = "";
 }
 
-/* ===== ESCANEO PARA VENTA ===== */
-scan.addEventListener("keydown", e => {
+document.getElementById("scan").addEventListener("keydown", function(e){
   if (e.key === "Enter") {
-    agregarVenta(scan.value.trim());
-    scan.value = "";
+    vender(this.value.trim());
+    this.value = "";
   }
 });
 
-function agregarVenta(cod) {
-  const p = inventario[cod];
-  if (!p) {
-    alert("Producto no registrado");
-    return;
-  }
-  if (p.existencia <= 0) {
-    alert("Sin existencia");
+function vender(c) {
+  if (!inventario[c]) {
+    alert("Producto NO encontrado");
     return;
   }
 
-  let precioCobro = prompt(
-    `Precio normal: Q${p.precio}\nPrecio mínimo permitido: Q${p.precioMin}\n\nPrecio a cobrar:`,
-    p.precio
+  let precio = prompt(
+    "Producto: " + inventario[c].nombre + 
+    "\nIngrese precio de venta:"
   );
 
-  precioCobro = Number(precioCobro);
-  if (precioCobro < p.precioMin) {
-    alert("No se permite cobrar menos del precio mínimo");
-    return;
-  }
-
-  p.existencia -= 1;
-  carrito.push({
-    nombre: p.nombre,
-    cant: 1,
-    precio: precioCobro,
-    total: precioCobro
-  });
-
-  localStorage.setItem("inventario_sandoval", JSON.stringify(inventario));
-  actualizarTabla();
+  alert("Se venderá en Q" + precio);
 }
+</script>
 
-function actualizarTabla() {
-  tablaVenta.innerHTML = "";
-  let total = 0;
-
-  carrito.forEach(i => {
-    total += i.total;
-    tablaVenta.innerHTML += `
-      <tr>
-        <td>${i.nombre}</td>
-        <td>${i.cant}</td>
-        <td>Q${i.precio.toFixed(2)}</td>
-        <td>Q${
+</body>
+</html>
