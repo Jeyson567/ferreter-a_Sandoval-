@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>POS – Paso 2</title>
+<title>POS – Paso 3</title>
 
 <style>
 table { width:100%; border-collapse:collapse; }
@@ -13,13 +13,14 @@ th, td { border-bottom:1px solid #ccc; padding:4px; }
 
 <body>
 
-<h2>POS – FERRETERÍA (Paso 2)</h2>
+<h2>POS – FERRETERÍA (Paso 3 – Inventario)</h2>
 
 <h3>Registrar producto</h3>
 <input id="codigo" placeholder="Código de barras">
 <input id="nombre" placeholder="Nombre del producto">
 <input id="precio" type="number" placeholder="Precio normal (Q)">
 <input id="precioMin" type="number" placeholder="Precio mínimo permitido (Q)">
+<input id="stock" type="number" placeholder="Existencia">
 <button onclick="guardar()">Guardar producto</button>
 
 <hr>
@@ -51,8 +52,9 @@ function guardar() {
   const n = nombre.value.trim();
   const p = Number(precio.value);
   const pmin = Number(precioMin.value);
+  const s = Number(stock.value);
 
-  if (!c || !n || !p || !pmin) {
+  if (!c || !n || !p || !pmin || !s) {
     alert("Complete todos los campos");
     return;
   }
@@ -62,11 +64,17 @@ function guardar() {
     return;
   }
 
-  inventario[c] = { nombre:n, precio:p, precioMin:pmin };
+  inventario[c] = {
+    nombre: n,
+    precio: p,
+    precioMin: pmin,
+    stock: s
+  };
+
   localStorage.setItem("inv", JSON.stringify(inventario));
   alert("Producto guardado");
 
-  codigo.value = nombre.value = precio.value = precioMin.value = "";
+  codigo.value = nombre.value = precio.value = precioMin.value = stock.value = "";
 }
 
 scan.addEventListener("keydown", e => {
@@ -83,8 +91,14 @@ function agregar(c) {
     return;
   }
 
+  if (p.stock <= 0) {
+    alert("❌ Sin existencia");
+    return;
+  }
+
   let precioVenta = Number(prompt(
     "Producto: " + p.nombre +
+    "\nExistencia: " + p.stock +
     "\nPrecio normal: Q" + p.precio +
     "\nPrecio mínimo: Q" + p.precioMin +
     "\n\nPrecio a cobrar:",
@@ -96,11 +110,14 @@ function agregar(c) {
     return;
   }
 
+  p.stock -= 1;
+
   carrito.push({
     nombre: p.nombre,
     precio: precioVenta
   });
 
+  localStorage.setItem("inv", JSON.stringify(inventario));
   actualizar();
 }
 
