@@ -15,14 +15,28 @@ th, td { border-bottom:1px solid #ccc; padding:4px; }
 .total { font-size:18px; font-weight:bold; text-align:right; }
 .danger { background:#c62828; color:#fff; }
 .secondary { background:#757575; color:#fff; }
+
+/* ====== TICKET 80mm ====== */
+@media print {
+  body {
+    width: 80mm;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    font-size: 12px;
+  }
+  .no-print {
+    display: none;
+  }
+}
 </style>
 </head>
 
 <body>
 
-<h2>POS – FERRETERÍA SANDOVAL</h2>
+<h2 class="no-print">POS – FERRETERÍA SANDOVAL</h2>
 
-<section>
+<section class="no-print">
 <h3>📦 Registrar / Agregar Existencia</h3>
 <input id="codigo" placeholder="Código de barras">
 <input id="nombre" placeholder="Nombre del producto">
@@ -33,7 +47,7 @@ th, td { border-bottom:1px solid #ccc; padding:4px; }
 <button class="danger" onclick="eliminarProducto()">Eliminar producto</button>
 </section>
 
-<section>
+<section class="no-print">
 <h3>📋 Inventario</h3>
 <table>
 <thead>
@@ -41,15 +55,13 @@ th, td { border-bottom:1px solid #ccc; padding:4px; }
   <th>Código</th>
   <th>Producto</th>
   <th>Stock</th>
-  <th>Precio</th>
-  <th>Mínimo</th>
 </tr>
 </thead>
 <tbody id="tablaInv"></tbody>
 </table>
 </section>
 
-<section>
+<section class="no-print">
 <h3>🛒 Venta</h3>
 <input id="scan" placeholder="Código + ENTER">
 <table>
@@ -57,16 +69,14 @@ th, td { border-bottom:1px solid #ccc; padding:4px; }
 <tr>
   <th>Producto</th>
   <th>Cant</th>
-  <th>Precio</th>
   <th>Total</th>
 </tr>
 </thead>
 <tbody id="tablaVenta"></tbody>
 </table>
-
 <div class="total" id="totalVenta">Total: Q0.00</div>
 
-<button onclick="finalizarVenta()">Finalizar venta</button>
+<button onclick="finalizarVenta()">Finalizar venta e imprimir</button>
 <button class="secondary" onclick="cancelarVenta()">Cancelar venta</button>
 </section>
 
@@ -82,108 +92,74 @@ function guardar() {
   const pmin = Number(precioMin.value);
   const s = Number(stock.value);
 
-  if (!c || !s) {
-    alert("Código y cantidad son obligatorios");
-    return;
-  }
+  if (!c || !s) return alert("Código y cantidad obligatorios");
 
   if (inventario[c]) {
     inventario[c].stock += s;
-    alert("✅ Existencia agregada");
   } else {
-    if (!n || !p || !pmin) {
-      alert("Complete todos los datos del producto");
-      return;
-    }
-    if (pmin > p) {
-      alert("Precio mínimo mayor al normal");
-      return;
-    }
-    inventario[c] = {
-      nombre:n,
-      precio:p,
-      precioMin:pmin,
-      stock:s
-    };
-    alert("✅ Producto creado");
+    if (!n || !p || !pmin) return alert("Complete todos los datos");
+    inventario[c] = { nombre:n, precio:p, precioMin:pmin, stock:s };
   }
 
   localStorage.setItem("inv", JSON.stringify(inventario));
-  limpiarCampos();
+  limpiar();
   mostrarInventario();
 }
 
 function eliminarProducto() {
   const c = codigo.value.trim();
-  if (!c) return alert("Ingrese el código");
-
-  if (!inventario[c]) return alert("El producto no existe");
-
-  if (!confirm(
-    "¿Eliminar este producto?\n\n" +
-    inventario[c].nombre +
-    "\nStock: " + inventario[c].stock
-  )) return;
+  if (!inventario[c]) return alert("No existe");
+  if (!confirm("¿Eliminar producto?")) return;
 
   delete inventario[c];
   localStorage.setItem("inv", JSON.stringify(inventario));
-  limpiarCampos();
+  limpiar();
   mostrarInventario();
-  alert("🗑️ Producto eliminado");
 }
 
-function limpiarCampos() {
+function limpiar() {
   codigo.value = nombre.value = precio.value = precioMin.value = stock.value = "";
 }
 
 function mostrarInventario() {
   tablaInv.innerHTML = "";
   for (let c in inventario) {
-    const p = inventario[c];
     tablaInv.innerHTML += `
       <tr>
         <td>${c}</td>
-        <td>${p.nombre}</td>
-        <td>${p.stock}</td>
-        <td>Q${p.precio.toFixed(2)}</td>
-        <td>Q${p.precioMin.toFixed(2)}</td>
-      </tr>
-    `;
+        <td>${inventario[c].nombre}</td>
+        <td>${inventario[c].stock}</td>
+      </tr>`;
   }
 }
 
 /* ===== VENTA ===== */
 scan.addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    agregarAlCarrito(scan.value.trim());
+    agregar(scan.value.trim());
     scan.value = "";
   }
 });
 
-function agregarAlCarrito(c) {
+function agregar(c) {
   const p = inventario[c];
-  if (!p) return alert("Producto no registrado");
-  if (p.stock <= 0) return alert("Sin existencia");
+  if (!p || p.stock <= 0) return alert("No disponible");
 
-  let cant = Number(prompt(
-    `Producto: ${p.nombre}\nExistencia disponible: ${p.stock}\n\n¿Cuántas unidades llevará?`
-  ));
-
-  if (!cant || cant <= 0 || cant > p.stock) return alert("Cantidad inválida");
+  let cant = Number(prompt(`Existencia: ${p.stock}\nCantidad:`));
+  if (!cant || cant > p.stock) return;
 
   let precioVenta = Number(prompt(
-    `Precio normal: Q${p.precio}\nPrecio mínimo: Q${p.precioMin}\n\nPrecio por unidad:`,
+    `Precio normal: Q${p.precio}\nPrecio mínimo: Q${p.precioMin}\nPrecio por unidad:`,
     p.precio
   ));
-
-  if (precioVenta < p.precioMin) return alert("Precio debajo del mínimo");
+  if (precioVenta < p.precioMin) return alert("Debajo del mínimo");
 
   carrito.push({
-    codigo: c,
-    nombre: p.nombre,
-    cant: cant,
-    precio: precioVenta,
-    total: cant * precioVenta
+    codigo:c,
+    nombre:p.nombre,
+    cant:cant,
+    precio:precioVenta,
+    total:cant*precioVenta
   });
 
   actualizarVenta();
@@ -192,54 +168,63 @@ function agregarAlCarrito(c) {
 function actualizarVenta() {
   tablaVenta.innerHTML = "";
   let total = 0;
-
   carrito.forEach(i => {
     total += i.total;
     tablaVenta.innerHTML += `
       <tr>
-        <td>${i.nombre}</td>
-        <td>${i.cant}</td>
-        <td>Q${i.precio.toFixed(2)}</td>
+        <td>${i.nombre} x${i.cant}</td>
         <td>Q${i.total.toFixed(2)}</td>
-      </tr>
-    `;
+      </tr>`;
   });
-
   totalVenta.textContent = "Total: Q" + total.toFixed(2);
 }
 
 function finalizarVenta() {
-  if (carrito.length === 0) return alert("No hay productos");
+  if (carrito.length === 0) return;
 
-  // Validar stock antes de confirmar
-  for (let item of carrito) {
-    if (inventario[item.codigo].stock < item.cant) {
-      alert("❌ Stock insuficiente para: " + item.nombre);
-      return;
-    }
-  }
-
-  // Descontar stock ahora sí
-  carrito.forEach(item => {
-    inventario[item.codigo].stock -= item.cant;
+  carrito.forEach(i => {
+    inventario[i.codigo].stock -= i.cant;
   });
 
   localStorage.setItem("inv", JSON.stringify(inventario));
-
+  imprimirTicket();
   carrito = [];
   actualizarVenta();
   mostrarInventario();
-
-  alert("✅ Venta finalizada correctamente");
 }
 
 function cancelarVenta() {
-  if (carrito.length === 0) return;
-  if (!confirm("¿Cancelar la venta actual?")) return;
-
   carrito = [];
   actualizarVenta();
-  alert("Venta cancelada. Inventario intacto.");
+}
+
+function imprimirTicket() {
+  let html = `
+  <div>
+    <center><strong>FERRETERÍA SANDOVAL</strong></center>
+    <center>${new Date().toLocaleString()}</center>
+    <hr>
+  `;
+
+  carrito.forEach(i => {
+    html += `
+      ${i.nombre}<br>
+      ${i.cant} x Q${i.precio.toFixed(2)} = Q${i.total.toFixed(2)}<br>
+    `;
+  });
+
+  const total = carrito.reduce((s,i)=>s+i.total,0);
+
+  html += `
+    <hr>
+    <strong>TOTAL: Q${total.toFixed(2)}</strong><br><br>
+    Gracias por su compra
+  </div>
+  `;
+
+  document.body.innerHTML = html;
+  window.print();
+  location.reload();
 }
 
 mostrarInventario();
