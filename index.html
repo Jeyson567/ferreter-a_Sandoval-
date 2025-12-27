@@ -2,12 +2,18 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>POS – Paso 1</title>
+<title>POS – Paso 2</title>
+
+<style>
+table { width:100%; border-collapse:collapse; }
+th, td { border-bottom:1px solid #ccc; padding:4px; }
+.total { font-size:18px; font-weight:bold; text-align:right; }
+</style>
 </head>
 
 <body>
 
-<h2>POS – FERRETERÍA (Paso 1)</h2>
+<h2>POS – FERRETERÍA (Paso 2)</h2>
 
 <h3>Registrar producto</h3>
 <input id="codigo" placeholder="Código de barras">
@@ -18,11 +24,27 @@
 
 <hr>
 
-<h3>Vender</h3>
+<h3>Venta</h3>
 <input id="scan" placeholder="Escanear / escribir código y ENTER">
+
+<table>
+<thead>
+<tr>
+  <th>Producto</th>
+  <th>Precio</th>
+  <th>Total</th>
+</tr>
+</thead>
+<tbody id="tabla"></tbody>
+</table>
+
+<div class="total" id="totalVenta">Total: Q0.00</div>
+
+<button onclick="finalizar()">Finalizar venta</button>
 
 <script>
 let inventario = JSON.parse(localStorage.getItem("inv")) || {};
+let carrito = [];
 
 function guardar() {
   const c = codigo.value.trim();
@@ -36,59 +58,84 @@ function guardar() {
   }
 
   if (pmin > p) {
-    alert("El precio mínimo no puede ser mayor al precio normal");
+    alert("Precio mínimo mayor al normal");
     return;
   }
 
-  inventario[c] = {
-    nombre: n,
-    precio: p,
-    precioMin: pmin
-  };
-
+  inventario[c] = { nombre:n, precio:p, precioMin:pmin };
   localStorage.setItem("inv", JSON.stringify(inventario));
-  alert("✅ Producto guardado");
+  alert("Producto guardado");
 
-  codigo.value = "";
-  nombre.value = "";
-  precio.value = "";
-  precioMin.value = "";
+  codigo.value = nombre.value = precio.value = precioMin.value = "";
 }
 
-scan.addEventListener("keydown", function(e){
+scan.addEventListener("keydown", e => {
   if (e.key === "Enter") {
-    vender(this.value.trim());
-    this.value = "";
+    agregar(scan.value.trim());
+    scan.value = "";
   }
 });
 
-function vender(c) {
+function agregar(c) {
   const p = inventario[c];
   if (!p) {
     alert("Producto no registrado");
     return;
   }
 
-  let precioVenta = prompt(
+  let precioVenta = Number(prompt(
     "Producto: " + p.nombre +
     "\nPrecio normal: Q" + p.precio +
-    "\nPrecio mínimo permitido: Q" + p.precioMin +
-    "\n\nIngrese precio de venta:",
+    "\nPrecio mínimo: Q" + p.precioMin +
+    "\n\nPrecio a cobrar:",
     p.precio
-  );
-
-  precioVenta = Number(precioVenta);
+  ));
 
   if (precioVenta < p.precioMin) {
-    alert("❌ No se permite vender debajo del precio mínimo");
+    alert("No se permite vender debajo del mínimo");
+    return;
+  }
+
+  carrito.push({
+    nombre: p.nombre,
+    precio: precioVenta
+  });
+
+  actualizar();
+}
+
+function actualizar() {
+  tabla.innerHTML = "";
+  let total = 0;
+
+  carrito.forEach(i => {
+    total += i.precio;
+    tabla.innerHTML += `
+      <tr>
+        <td>${i.nombre}</td>
+        <td>Q${i.precio.toFixed(2)}</td>
+        <td>Q${i.precio.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  totalVenta.textContent = "Total: Q" + total.toFixed(2);
+}
+
+function finalizar() {
+  if (carrito.length === 0) {
+    alert("No hay productos");
     return;
   }
 
   alert(
-    "✅ Venta correcta\n" +
-    "Producto: " + p.nombre +
-    "\nPrecio final: Q" + precioVenta
+    "Venta finalizada\n" +
+    "Productos: " + carrito.length + "\n" +
+    totalVenta.textContent
   );
+
+  carrito = [];
+  actualizar();
 }
 </script>
 
